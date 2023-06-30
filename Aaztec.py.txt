@@ -1,0 +1,47 @@
+import time
+import random
+import string
+
+def generate_random_paragraph(words, min_length, max_length):
+    paragraph = []
+    for _ in range(words):
+        word_length = random.randint(min_length, max_length)
+        word = ''.join(random.choices(string.ascii_letters, k=word_length))
+        paragraph.append(word)
+    return ' '.join(paragraph)
+
+def calculate_typing_speed(text, time_taken):
+    words = len(text.split())
+    speed = words / time_taken
+    return speed
+
+def calculate_accuracy_percentage(original_text, user_text):
+    correct_chars = 0
+    for original_char, user_char in zip(original_text, user_text):
+        if original_char == user_char:
+            correct_chars += 1
+    accuracy = (correct_chars / len(original_text)) * 100
+    return accuracy
+
+def run_typing_test():
+    print("Welcome to the Typing Speed Test!")
+    print("Enter the desired parameters:")
+    words = int(input("Number of words in the random paragraph: "))
+    min_length = int(input("Minimum word length: "))
+    max_length = int(input("Maximum word length: "))
+    print("Generating random paragraph...")
+    original_text = generate_random_paragraph(words, min_length, max_length)
+    print("Type the following text as fast as you can:")
+    print(original_text)
+    input("Press Enter when you are ready to start.")
+    start_time = time.time()
+    user_input = input()
+    end_time = time.time()
+    time_taken = end_time - start_time
+    typing_speed = calculate_typing_speed(user_input, time_taken)
+    accuracy_percentage = calculate_accuracy_percentage(original_text, user_input)
+    print("Time taken:", round(time_taken, 2), "seconds")
+    print("Your typing speed:", round(typing_speed, 2), "words per second")
+    print("Accuracy:", round(accuracy_percentage, 2), "%")
+
+run_typing_test()
