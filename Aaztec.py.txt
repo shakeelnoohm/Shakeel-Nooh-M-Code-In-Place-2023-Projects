@@ -1,47 +1,198 @@
 import time
 import random
 import string
+from difflib import SequenceMatcher
 
-def generate_random_paragraph(words, min_length, max_length):
+# Common English words for more realistic typing practice
+COMMON_WORDS = [
+    "the", "be", "to", "of", "and", "a", "in", "that", "have", "I", "it",
+    "for", "not", "on", "with", "he", "as", "you", "do", "at", "this", "but",
+    "his", "by", "from", "they", "we", "say", "her", "she", "or", "an",
+    "will", "my", "one", "all", "would", "there", "their", "what", "so",
+    "up", "out", "if", "about", "who", "get", "which", "go", "me", "when",
+    "make", "can", "like", "time", "no", "just", "him", "know", "take",
+    "people", "into", "year", "your", "good", "some", "could", "them",
+    "see", "other", "than", "then", "now", "look", "only", "come", "its",
+    "over", "think", "also", "back", "after", "use", "two", "how", "our",
+    "work", "first", "well", "way", "even", "new", "want", "because",
+    "any", "these", "give", "day", "most", "us", "is", "was", "are", "were"
+]
+
+def generate_random_paragraph(word_count, min_length, max_length):
+    """Generate a paragraph of random English words."""
     paragraph = []
-    for _ in range(words):
-        word_length = random.randint(min_length, max_length)
-        word = ''.join(random.choices(string.ascii_letters, k=word_length))
+    for _ in range(word_count):
+        word = random.choice(COMMON_WORDS)
+        # Occasionally capitalize or add punctuation for realism
+        if random.random() < 0.1:
+            word = word.capitalize()
+        if random.random() < 0.05 and len(paragraph) < word_count - 1:
+            word += random.choice([",", ";"])
         paragraph.append(word)
+    # End with a period
+    paragraph[-1] = paragraph[-1] + "."
     return ' '.join(paragraph)
 
-def calculate_typing_speed(text, time_taken):
-    words = len(text.split())
-    speed = words / time_taken
-    return speed
+def get_valid_int_input(prompt, min_val=1, max_val=1000):
+    """Get validated integer input from user."""
+    while True:
+        try:
+            value = int(input(prompt))
+            if min_val <= value <= max_val:
+                return value
+            print(f"Please enter a value between {min_val} and {max_val}.")
+        except ValueError:
+            print("Invalid input. Please enter a whole number.")
 
-def calculate_accuracy_percentage(original_text, user_text):
+def calculate_wpm(text, time_taken_seconds):
+    """Calculate words per minute (standard measure)."""
+    words = len(text.split())
+    minutes = time_taken_seconds / 60
+    if minutes == 0:
+        return 0
+    return words / minutes
+
+def calculate_cpm(text, time_taken_seconds):
+    """Calculate characters per minute."""
+    chars = len(text)
+    minutes = time_taken_seconds / 60
+    if minutes == 0:
+        return 0
+    return chars / minutes
+
+def calculate_accuracy(original_text, user_text):
+    """Calculate accuracy with detailed error analysis."""
+    total_chars = len(original_text)
+    if total_chars == 0:
+        return 100.0, 0, 0, 0
+
     correct_chars = 0
-    for original_char, user_char in zip(original_text, user_text):
-        if original_char == user_char:
-            correct_chars += 1
-    accuracy = (correct_chars / len(original_text)) * 100
-    return accuracy
+    error_chars = 0
+    extra_chars = 0
+
+    # Compare character by character
+    for i, orig_char in enumerate(original_text):
+        if i < len(user_text):
+            if orig_char == user_text[i]:
+                correct_chars += 1
+            else:
+                error_chars += 1
+        else:
+            # Missing characters count as errors
+            error_chars += 1
+
+    # Count extra characters typed beyond original length
+    if len(user_text) > total_chars:
+        extra_chars = len(user_text) - total_chars
+        error_chars += extra_chars
+
+    accuracy = (correct_chars / total_chars) * 100 if total_chars > 0 else 0
+    return accuracy, correct_chars, error_chars, extra_chars
+
+def show_error_details(original_text, user_text):
+    """Display a visual comparison highlighting errors."""
+    print("\n--- Error Analysis ---")
+    max_len = max(len(original_text), len(user_text))
+    orig_display = ""
+    user_display = ""
+    indicator = ""
+
+    for i in range(max_len):
+        orig_char = original_text[i] if i < len(original_text) else " "
+        user_char = user_text[i] if i < len(user_text) else " "
+
+        orig_display += orig_char
+        user_display += user_char
+
+        if orig_char == user_char:
+            indicator += "."
+        else:
+            indicator += "^"
+
+    # Truncate long lines for display
+    max_display = 80
+    if len(orig_display) > max_display:
+        print(f"Expected: {orig_display[:max_display]}...")
+        print(f"You typed: {user_display[:max_display]}...")
+        print(f"Errors:    {indicator[:max_display]}...")
+    else:
+        print(f"Expected:  {orig_display}")
+        print(f"You typed: {user_display}")
+        print(f"Errors:    {indicator} (^ = mismatch)")
 
 def run_typing_test():
-    print("Welcome to the Typing Speed Test!")
-    print("Enter the desired parameters:")
-    words = int(input("Number of words in the random paragraph: "))
-    min_length = int(input("Minimum word length: "))
-    max_length = int(input("Maximum word length: "))
-    print("Generating random paragraph...")
-    original_text = generate_random_paragraph(words, min_length, max_length)
-    print("Type the following text as fast as you can:")
-    print(original_text)
-    input("Press Enter when you are ready to start.")
-    start_time = time.time()
-    user_input = input()
-    end_time = time.time()
-    time_taken = end_time - start_time
-    typing_speed = calculate_typing_speed(user_input, time_taken)
-    accuracy_percentage = calculate_accuracy_percentage(original_text, user_input)
-    print("Time taken:", round(time_taken, 2), "seconds")
-    print("Your typing speed:", round(typing_speed, 2), "words per second")
-    print("Accuracy:", round(accuracy_percentage, 2), "%")
+    """Main typing test function."""
+    print("=" * 50)
+    print("       TYPING SPEED TEST")
+    print("=" * 50)
+    print()
 
-run_typing_test()
+    while True:
+        # Get parameters
+        words = get_valid_int_input("Number of words (5-100): ", 5, 100)
+
+        # Generate and display text
+        original_text = generate_random_paragraph(words, 2, 10)
+        print(f"\n{'─' * 50}")
+        print("TYPE THIS TEXT:")
+        print(f"{'─' * 50}")
+        print(original_text)
+        print(f"{'─' * 50}\n")
+
+        # Wait for user to start
+        input("Press Enter when ready...")
+        print("\n⏱️  GO! Start typing now:\n")
+
+        # Timing and input
+        start_time = time.time()
+        user_input = input()
+        end_time = time.time()
+
+        time_taken = end_time - start_time
+
+        if not user_input.strip():
+            print("\nNo input detected. Test cancelled.")
+        else:
+            # Calculate stats
+            wpm = calculate_wpm(original_text, time_taken)
+            cpm = calculate_cpm(original_text, time_taken)
+            accuracy, correct, errors, extra = calculate_accuracy(original_text, user_input)
+
+            # Display results
+            print(f"\n{'=' * 50}")
+            print("           RESULTS")
+            print(f"{'=' * 50}")
+            print(f"⏱️  Time:           {time_taken:.2f} seconds")
+            print(f"🚀 Speed:          {wpm:.1f} WPM (words per minute)")
+            print(f"⌨️  Speed:          {cpm:.1f} CPM (chars per minute)")
+            print(f"🎯 Accuracy:       {accuracy:.1f}%")
+            print(f"   ({correct}/{len(original_text)} characters correct)")
+            if errors > 0:
+                print(f"   ({errors} errors, {extra} extra/missing chars)")
+            print(f"{'=' * 50}")
+
+            # Show error details if not perfect
+            if accuracy < 100:
+                show_error_details(original_text, user_input)
+
+            # Performance rating
+            print("\n📊 Performance:", end=" ")
+            if accuracy >= 95 and wpm >= 60:
+                print("🌟 Excellent!")
+            elif accuracy >= 90 and wpm >= 40:
+                print("👍 Good job!")
+            elif accuracy >= 80:
+                print("💪 Keep practicing!")
+            else:
+                print("📚 Focus on accuracy first")
+
+        # Ask to retry
+        print(f"\n{'─' * 50}")
+        retry = input("Try again? (y/n): ").strip().lower()
+        if retry != 'y':
+            print("\nThanks for practicing! 👋\n")
+            break
+        print()
+
+if __name__ == "__main__":
+    run_typing_test()
